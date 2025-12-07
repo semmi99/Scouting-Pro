@@ -1,85 +1,168 @@
-
-import React, { useState, useRef } from 'react';
-import { Save, Calendar, Activity, BarChart2, Upload, Flag } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Save, Activity, BarChart2, Upload } from 'lucide-react';
 import { PlayerAttributes, Position, Foot } from '../types';
 import AttributeRadar from './AttributeRadar';
 import { jsPDF } from 'jspdf';
 
+// --- Helper Functions & Sub-Components defined OUTSIDE ---
+
+const getLabel = (key: string) => {
+    const labels: Record<string, string> = {
+        // Character
+        teamwork: 'Teamfähigkeit', leadership: 'Führungseigenschaften', intelligence: 'Spielintelligenz',
+        ambition: 'Ehrgeiz', confidence: 'Selbstvertrauen', consistency: 'Konsequenz',
+        discipline: 'Disziplin', focus: 'Fokussierung', motivation: 'Motivation',
+        respect: 'Respekt', reliability: 'Zuverlässigkeit',
+        // Technique
+        passing: 'Passspiel', shootingTechnique: 'Schusstechnik', dexterity: 'Geschicklichkeit',
+        dribbling: 'Dribbling', beatingOpponent: 'Ausspielen des Gegners', finishing: 'Torschuss',
+        firstTouch: 'Ballannahme', ballControl: 'Ballmitnahme', crossing: 'Flanken', oneVsOne: '1 gegen 1',
+        // Athletics
+        acceleration: 'Antritt', cyclicSpeed: 'Zykl. Schnelligkeit', acyclicSpeed: 'Azykl. Schnelligkeit',
+        reaction: 'Reaktion', stamina: 'Ausdauer', speedEndurance: 'Schnelligkeitsausdauer',
+        powerEndurance: 'Kraftausdauer', agility: 'Beweglichkeit', jumping: 'Sprungkraft',
+        throwing: 'Wurfkraft', explosiveness: 'Schnellkraft',
+        // Mentality
+        attitude: 'Einstellungen', bodyLanguage: 'Körperhaltung',
+        visualization: 'Bewegungs-/Handlungsvorstellung', debriefingInput: 'Spielnachbesprechung',
+        // Tactics
+        anticipation: 'Antizipation', decisiveness: 'Entscheidungsfreude', ballRecovery: 'Balleroberung',
+        ballProtection: 'Ballsicherung', scoringChance: 'Torchance', goal: 'Tor',
+        followUp: 'Nachgehen (Tor)', offering: 'Anbieten', meetBall: 'Dem Ball entgegen',
+        giveAndGo: 'Give and Go', creatingSpace: 'Räume schaffen', positionSwitch: 'Positionswechsel',
+        holdPosition: 'Position halten', communication: 'Kommunikation', tacticalShot: 'Torschuss (Taktik)'
+    };
+    return labels[key] || key;
+};
+
+const ChartSection = ({ title, categoryKey, data, onAttrChange }: { title: string, categoryKey: keyof PlayerAttributes, data: any, onAttrChange: (cat: keyof PlayerAttributes, key: string, val: string) => void }) => {
+    const chartData = Object.keys(data).map(key => ({
+        subject: getLabel(key),
+        value: data[key],
+        fullMark: 10
+    }));
+
+    return (
+       <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg break-inside-avoid">
+           <div className="flex items-center gap-2 mb-6 border-b border-slate-700 pb-2">
+               <BarChart2 className="w-5 h-5 text-yellow-400" />
+               <h2 className="text-xl font-bold text-white uppercase tracking-wider">{title}</h2>
+           </div>
+           
+           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+               <div className="h-full min-h-[300px]">
+                    <AttributeRadar data={chartData} />
+               </div>
+               <div className="space-y-4">
+                   {Object.keys(data).map((key) => (
+                       <div key={key} className="flex items-center gap-4">
+                           <label className="text-xs font-bold text-slate-300 w-32 uppercase truncate" title={getLabel(key)}>
+                               {getLabel(key)}
+                           </label>
+                           <input 
+                               type="range" 
+                               min="1" max="10" step="0.5"
+                               value={data[key]}
+                               onChange={(e) => onAttrChange(categoryKey, key, e.target.value)}
+                               className="flex-1 accent-yellow-400 h-1 bg-slate-600 rounded-lg appearance-none cursor-pointer"
+                           />
+                           <span className={`text-sm font-bold w-8 text-center ${
+                               data[key] >= 8 ? 'text-green-400' : data[key] >= 5 ? 'text-yellow-400' : 'text-red-400'
+                           }`}>
+                               {data[key]}
+                           </span>
+                       </div>
+                   ))}
+               </div>
+           </div>
+       </section>
+    );
+ };
+
+// --- Main Component ---
+
 const PlayerScouting: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize detailed attributes
-  const [attributes, setAttributes] = useState<PlayerAttributes>({
-    character: {
-        teamwork: 7, leadership: 6, intelligence: 7, ambition: 8, confidence: 7,
-        consistency: 6, discipline: 8, focus: 7, motivation: 8, respect: 9, reliability: 7
-    },
-    technique: {
-        passing: 7, shootingTechnique: 6, dexterity: 7, dribbling: 8,
-        beatingOpponent: 7, finishing: 6, firstTouch: 8, ballControl: 8,
-        crossing: 6, oneVsOne: 7
-    },
-    athletics: {
-        acceleration: 8, cyclicSpeed: 7, acyclicSpeed: 7, reaction: 8,
-        stamina: 8, speedEndurance: 7, powerEndurance: 7, agility: 8,
-        jumping: 6, throwing: 5, explosiveness: 7
-    },
-    mentality: {
-        attitude: 9, bodyLanguage: 8, visualization: 7, debriefingInput: 8
-    },
-    tactics: {
-        anticipation: 7, decisiveness: 7, ballRecovery: 6, ballProtection: 7,
-        scoringChance: 7, goal: 6, followUp: 7, offering: 8, meetBall: 8,
-        giveAndGo: 7, creatingSpace: 8, positionSwitch: 6, holdPosition: 7,
-        communication: 7, tacticalShot: 6
-    }
+  // Initialize detailed attributes from LocalStorage
+  const [attributes, setAttributes] = useState<PlayerAttributes>(() => {
+    const saved = localStorage.getItem('scouting_player_attributes');
+    return saved ? JSON.parse(saved) : {
+        character: {
+            teamwork: 7, leadership: 6, intelligence: 7, ambition: 8, confidence: 7,
+            consistency: 6, discipline: 8, focus: 7, motivation: 8, respect: 9, reliability: 7
+        },
+        technique: {
+            passing: 7, shootingTechnique: 6, dexterity: 7, dribbling: 8,
+            beatingOpponent: 7, finishing: 6, firstTouch: 8, ballControl: 8,
+            crossing: 6, oneVsOne: 7
+        },
+        athletics: {
+            acceleration: 8, cyclicSpeed: 7, acyclicSpeed: 7, reaction: 8,
+            stamina: 8, speedEndurance: 7, powerEndurance: 7, agility: 8,
+            jumping: 6, throwing: 5, explosiveness: 7
+        },
+        mentality: {
+            attitude: 9, bodyLanguage: 8, visualization: 7, debriefingInput: 8
+        },
+        tactics: {
+            anticipation: 7, decisiveness: 7, ballRecovery: 6, ballProtection: 7,
+            scoringChance: 7, goal: 6, followUp: 7, offering: 8, meetBall: 8,
+            giveAndGo: 7, creatingSpace: 8, positionSwitch: 6, holdPosition: 7,
+            communication: 7, tacticalShot: 6
+        }
+    };
   });
 
-  // Player & Match Data State
-  const [playerData, setPlayerData] = useState({
-    name: '',
-    team: '',
-    position: Position.MIT,
-    foot: Foot.Rechts,
-    height: '',
-    dob: '',
-    country: '',
-    image: null as string | null, // Base64 image
-    
-    // Match Context
-    opponent: '',
-    competition: '',
-    date: '',
-    formation: '',
-    result: '',
-    season: '', 
-    
-    // Stats
-    minutes: '90',
-    goals: 0,
-    assists: 0,
-    starter: true,
+  // Player & Match Data State from LocalStorage
+  const [playerData, setPlayerData] = useState(() => {
+    const saved = localStorage.getItem('scouting_player_data');
+    return saved ? JSON.parse(saved) : {
+        name: '',
+        team: '',
+        position: Position.MIT,
+        foot: Foot.Rechts,
+        height: '',
+        dob: '',
+        country: '',
+        image: null as string | null,
+        
+        opponent: '',
+        competition: '',
+        date: '',
+        formation: '',
+        result: '',
+        season: '', 
+        
+        minutes: '90',
+        goals: 0,
+        assists: 0,
+        starter: true,
 
-    // Text Attributes
-    strengths: '',
-    weaknesses: '',
+        strengths: '',
+        weaknesses: '',
 
-    // Tactical Text
-    tacticalPossession: '',
-    tacticalNoPossession: '',
-    tacticalDefensive: '',
-    tacticalOffensive: '',
-    tacticalSummary: ''
+        tacticalPossession: '',
+        tacticalNoPossession: '',
+        tacticalDefensive: '',
+        tacticalOffensive: '',
+        tacticalSummary: ''
+    };
   });
+
+  // --- Persistence Effects (Auto-Save) ---
+  useEffect(() => { localStorage.setItem('scouting_player_attributes', JSON.stringify(attributes)); }, [attributes]);
+  useEffect(() => { localStorage.setItem('scouting_player_data', JSON.stringify(playerData)); }, [playerData]);
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     
     if (type === 'checkbox') {
         const checked = (e.target as HTMLInputElement).checked;
-        setPlayerData(prev => ({ ...prev, [name]: checked }));
+        setPlayerData((prev: any) => ({ ...prev, [name]: checked }));
     } else {
-        setPlayerData(prev => ({ ...prev, [name]: value }));
+        setPlayerData((prev: any) => ({ ...prev, [name]: value }));
     }
   };
 
@@ -88,7 +171,7 @@ const PlayerScouting: React.FC = () => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPlayerData(prev => ({ ...prev, image: reader.result as string }));
+        setPlayerData((prev: any) => ({ ...prev, image: reader.result as string }));
       };
       reader.readAsDataURL(file);
     }
@@ -104,41 +187,10 @@ const PlayerScouting: React.FC = () => {
     }));
   };
 
-  // Translation helpers for UI
-  const getLabel = (key: string) => {
-      const labels: Record<string, string> = {
-          // Character
-          teamwork: 'Teamfähigkeit', leadership: 'Führungseigenschaften', intelligence: 'Spielintelligenz',
-          ambition: 'Ehrgeiz', confidence: 'Selbstvertrauen', consistency: 'Konsequenz',
-          discipline: 'Disziplin', focus: 'Fokussierung', motivation: 'Motivation',
-          respect: 'Respekt', reliability: 'Zuverlässigkeit',
-          // Technique
-          passing: 'Passspiel', shootingTechnique: 'Schusstechnik', dexterity: 'Geschicklichkeit',
-          dribbling: 'Dribbling', beatingOpponent: 'Ausspielen des Gegners', finishing: 'Torschuss',
-          firstTouch: 'Ballannahme', ballControl: 'Ballmitnahme', crossing: 'Flanken', oneVsOne: '1 gegen 1',
-          // Athletics
-          acceleration: 'Antritt', cyclicSpeed: 'Zykl. Schnelligkeit', acyclicSpeed: 'Azykl. Schnelligkeit',
-          reaction: 'Reaktion', stamina: 'Ausdauer', speedEndurance: 'Schnelligkeitsausdauer',
-          powerEndurance: 'Kraftausdauer', agility: 'Beweglichkeit', jumping: 'Sprungkraft',
-          throwing: 'Wurfkraft', explosiveness: 'Schnellkraft',
-          // Mentality
-          attitude: 'Einstellungen', bodyLanguage: 'Körperhaltung',
-          visualization: 'Bewegungs-/Handlungsvorstellung', debriefingInput: 'Spielnachbesprechung',
-          // Tactics
-          anticipation: 'Antizipation', decisiveness: 'Entscheidungsfreude', ballRecovery: 'Balleroberung',
-          ballProtection: 'Ballsicherung', scoringChance: 'Torchance', goal: 'Tor',
-          followUp: 'Nachgehen (Tor)', offering: 'Anbieten', meetBall: 'Dem Ball entgegen',
-          giveAndGo: 'Give and Go', creatingSpace: 'Räume schaffen', positionSwitch: 'Positionswechsel',
-          holdPosition: 'Position halten', communication: 'Kommunikation', tacticalShot: 'Torschuss (Taktik)'
-      };
-      return labels[key] || key;
-  };
-
   const generatePDF = () => {
       const doc = new jsPDF();
       const primaryColor = [251, 191, 36]; // Yellow-400
       const secondaryColor = [30, 41, 59]; // Slate-800
-      const lightGrey = [240, 240, 240];
 
       // -- Header --
       doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
@@ -167,7 +219,8 @@ const PlayerScouting: React.FC = () => {
       doc.setFont("helvetica", "bold");
       const nameX = playerData.image ? 50 : 105;
       const align = playerData.image ? 'left' : 'center';
-      doc.text(playerData.name.toUpperCase(), nameX, 50, { align: align as any });
+      // @ts-ignore
+      doc.text(playerData.name.toUpperCase(), nameX, 50, { align: align });
       
       // Reset Y
       y = 75;
@@ -218,537 +271,310 @@ const PlayerScouting: React.FC = () => {
       doc.text(`Formation: ${playerData.formation}`, col1, y);
       doc.text(`Ergebnis: ${playerData.result}`, col2, y);
       y += 6;
-      doc.text(`Startformation: ${playerData.starter ? 'Ja' : 'Nein'}`, col1, y);
+      doc.text(`Startelf: ${playerData.starter ? 'Ja' : 'Nein'}`, col1, y);
       doc.text(`Minuten: ${playerData.minutes}`, col2, y);
       y += 6;
       doc.text(`Tore: ${playerData.goals}`, col1, y);
       doc.text(`Assists: ${playerData.assists}`, col2, y);
 
-      // -- Analysis Blocks --
-      y += 15;
+      // -- Tactical Summary Page --
+      doc.addPage();
+      y = 20;
       doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
       doc.rect(0, y - 6, 210, 8, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      doc.text("ANALYSE", 105, y, { align: 'center' });
-
+      doc.text("TAKTIK & ANALYSE", 105, y, { align: 'center' });
       y += 15;
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(10);
-
-      // Stärken / Schwächen
-      doc.setFont("helvetica", "bold");
-      doc.text("STÄRKE", 14, y);
-      doc.text("SCHWÄCHEN", 110, y);
-      y += 5;
-      doc.setFont("helvetica", "normal");
-      doc.text(doc.splitTextToSize(playerData.strengths, 85), 14, y);
-      doc.text(doc.splitTextToSize(playerData.weaknesses, 85), 110, y);
-
-      y += 35; // More spacing
-
-      // -- Draw Charts Function --
-      const drawChartSection = (title: string, dataObj: any) => {
-          const keys = Object.keys(dataObj);
-          const requiredHeight = (keys.length * 8) + 25; // Header + bars
-
-          // Check for page break
-          if (y + requiredHeight > 280) { 
-              doc.addPage(); 
-              y = 20; 
-          }
-          
-          // Section Header
-          doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-          doc.rect(14, y, 182, 8, 'F');
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(11);
-          doc.setTextColor(255, 255, 255);
-          doc.text(title.toUpperCase(), 16, y + 5.5);
-          y += 12;
-
-          // Draw Bars
-          const barHeight = 5;
-          const labelWidth = 55;
-          const maxBarWidth = 110;
-          
-          doc.setFontSize(9);
-          doc.setFont("helvetica", "normal");
-          doc.setTextColor(0,0,0);
-
-          keys.forEach(key => {
-              // Extra check per line not strictly necessary due to block check above, but good safety
-              if (y > 280) { doc.addPage(); y = 20; }
-              
-              const val = dataObj[key];
-              const label = getLabel(key);
-
-              // Label
-              doc.text(label, 14, y + 4);
-
-              // Bar Background Container
-              doc.setFillColor(lightGrey[0], lightGrey[1], lightGrey[2]);
-              doc.rect(14 + labelWidth, y, maxBarWidth, barHeight, 'F');
-
-              // Bar Value
-              // Color mapping based on value
-              if (val >= 8) doc.setFillColor(34, 197, 94); // Green
-              else if (val >= 6) doc.setFillColor(250, 204, 21); // Yellow
-              else doc.setFillColor(239, 68, 68); // Red
-              
-              const currentBarWidth = (val / 10) * maxBarWidth;
-              if (currentBarWidth > 0) {
-                 doc.rect(14 + labelWidth, y, currentBarWidth, barHeight, 'F');
-              }
-
-              // Value Text
-              doc.text(val.toString(), 14 + labelWidth + maxBarWidth + 3, y + 4);
-
-              y += 8; // Spacing per bar
-          });
-          y += 5; // Spacing between charts
-      };
-
-      // Draw All 5 Charts
-      drawChartSection("Charaktereigenschaften", attributes.character);
-      drawChartSection("Technik", attributes.technique);
-      drawChartSection("Athletik", attributes.athletics);
-      drawChartSection("Mentalität", attributes.mentality);
-      drawChartSection("Taktik", attributes.tactics);
-
-      // -- Text Phases --
-      // Force Page break for text phases to keep them clean
-      doc.addPage(); 
-      y = 20;
-
-      doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-      doc.rect(0, 0, 210, 15, 'F');
-      doc.setFontSize(14);
-      doc.setTextColor(255, 255, 255);
-      doc.text("TAKTISCHES PROFIL", 105, 10, { align: 'center' });
-      y = 30;
       
-      const phases = [
-          { title: "IM BALLBESITZ", text: playerData.tacticalPossession },
-          { title: "GEGNER BALLBESITZ", text: playerData.tacticalNoPossession },
-          { title: "DEFENSIVE", text: playerData.tacticalDefensive },
-          { title: "OFFENSIVE", text: playerData.tacticalOffensive },
-          { title: "ZUSAMMENFASSUNG", text: playerData.tacticalSummary },
+      const textSections = [
+        { t: "Stärken", c: playerData.strengths },
+        { t: "Schwächen", c: playerData.weaknesses },
+        { t: "Im Ballbesitz", c: playerData.tacticalPossession },
+        { t: "Gegner Ballbesitz", c: playerData.tacticalNoPossession },
+        { t: "Defensivverhalten", c: playerData.tacticalDefensive },
+        { t: "Offensivverhalten", c: playerData.tacticalOffensive },
+        { t: "Zusammenfassung", c: playerData.tacticalSummary },
       ];
 
-      phases.forEach(phase => {
-          if (y > 250) { doc.addPage(); y = 20; }
-          
+      doc.setTextColor(0,0,0);
+      doc.setFontSize(10);
+      
+      textSections.forEach(sec => {
+          if (y > 270) { doc.addPage(); y = 20; }
           doc.setFont("helvetica", "bold");
-          doc.setFontSize(11);
-          doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-          doc.text(phase.title, 14, y);
-          y += 6;
-          
+          doc.text(sec.t, 14, y);
+          y += 5;
           doc.setFont("helvetica", "normal");
-          doc.setFontSize(10);
-          doc.setTextColor(0,0,0);
-          const lines = doc.splitTextToSize(phase.text, 182);
+          const lines = doc.splitTextToSize(sec.c, 180);
           doc.text(lines, 14, y);
-          y += (lines.length * 5) + 10;
+          y += (lines.length * 5) + 8;
       });
+
+      // -- Diagrams (Bar Charts) --
+      const drawBarChart = (title: string, dataObj: any) => {
+          doc.addPage();
+          doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+          doc.rect(0, 14, 210, 8, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(14);
+          doc.setFont("helvetica", "bold");
+          doc.text(title.toUpperCase(), 105, 20, { align: 'center' });
+
+          let chartY = 40;
+          doc.setTextColor(0, 0, 0);
+          doc.setFontSize(9);
+
+          Object.entries(dataObj).forEach(([key, val]) => {
+              const label = getLabel(key);
+              const score = Number(val);
+              
+              // Label
+              doc.text(label, 14, chartY);
+              
+              // Bar Background
+              doc.setFillColor(230, 230, 230);
+              doc.roundedRect(60, chartY - 3, 130, 4, 1, 1, 'F');
+
+              // Bar Fill
+              if (score > 0) {
+                  // Color gradient logic simulation
+                  if (score >= 8) doc.setFillColor(34, 197, 94); // Green
+                  else if (score >= 5) doc.setFillColor(234, 179, 8); // Yellow
+                  else doc.setFillColor(239, 68, 68); // Red
+                  
+                  const width = (score / 10) * 130;
+                  doc.roundedRect(60, chartY - 3, width, 4, 1, 1, 'F');
+              }
+              
+              // Score Text
+              doc.text(score.toString(), 195, chartY);
+
+              chartY += 12;
+          });
+      };
+
+      drawBarChart("Charaktereigenschaften", attributes.character);
+      drawBarChart("Technik", attributes.technique);
+      drawBarChart("Athletik", attributes.athletics);
+      drawBarChart("Mentalität", attributes.mentality);
+      drawBarChart("Taktik", attributes.tactics);
 
       doc.save(`player-report-${playerData.name}.pdf`);
   };
 
-  const ChartSection = ({ title, dataObj, category }: { title: string, dataObj: any, category: keyof PlayerAttributes }) => {
-      const dataForRadar = Object.keys(dataObj).map(key => ({
-          subject: getLabel(key).substring(0, 4) + '.', // Short label for radar
-          fullSubject: getLabel(key),
-          value: dataObj[key],
-          fullMark: 10
-      }));
-
-      return (
-          <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg mb-6">
-              <h3 className="text-yellow-400 font-bold uppercase mb-4 border-b border-slate-700 pb-2 flex items-center gap-2">
-                  <BarChart2 className="w-4 h-4" /> {title}
-              </h3>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {/* Radar */}
-                  <div className="h-64">
-                      <AttributeRadar data={dataForRadar} />
-                  </div>
-
-                  {/* Sliders */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2 content-start">
-                      {Object.keys(dataObj).map((key) => (
-                          <div key={key} className="bg-slate-900/50 p-2 rounded">
-                              <div className="flex justify-between items-end mb-1">
-                                  <label className="text-xs font-bold text-slate-300 truncate w-32" title={getLabel(key)}>
-                                      {getLabel(key)}
-                                  </label>
-                                  <span className={`text-xs font-bold ${dataObj[key] >= 8 ? 'text-green-400' : 'text-yellow-400'}`}>
-                                      {dataObj[key]}
-                                  </span>
-                              </div>
-                              <input 
-                                  type="range" 
-                                  min="1" 
-                                  max="10" 
-                                  step="0.5"
-                                  value={dataObj[key]} 
-                                  onChange={(e) => handleAttrChange(category, key, e.target.value)}
-                                  className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-yellow-400"
-                              />
-                          </div>
-                      ))}
-                  </div>
-              </div>
-          </div>
-      );
-  };
-
   return (
     <div className="space-y-8 animate-fade-in">
-      
-      {/* Top Section: Profile Card & Match Context */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Profile Card */}
-        <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-lg p-6 lg:col-span-1 flex flex-col items-center text-center relative group">
-            <div 
-                className="w-32 h-32 rounded-full overflow-hidden border-4 border-yellow-400 shadow-xl mb-4 relative bg-slate-700 cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
-            >
-                {playerData.image ? (
-                    <img src={playerData.image} alt="Player" className="w-full h-full object-cover" />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-500">
-                        <Upload className="w-8 h-8" />
+        {/* Basic Info */}
+        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+            <div className="flex items-center gap-2 mb-6 border-b border-slate-700 pb-2">
+                <Activity className="w-5 h-5 text-yellow-400" />
+                <h2 className="text-xl font-bold text-white uppercase tracking-wider">Spieler Profil</h2>
+            </div>
+            
+            <div className="flex flex-col md:flex-row gap-8">
+                {/* Image Upload */}
+                <div className="shrink-0">
+                    <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-40 h-40 bg-slate-900 border-2 border-dashed border-slate-600 rounded-full flex flex-col items-center justify-center cursor-pointer hover:border-yellow-400 transition-colors overflow-hidden relative group"
+                    >
+                        {playerData.image ? (
+                            <img src={playerData.image} alt="Player" className="w-full h-full object-cover" />
+                        ) : (
+                            <>
+                                <Upload className="w-8 h-8 text-slate-500 mb-2" />
+                                <span className="text-xs text-slate-500 uppercase font-bold">Foto</span>
+                            </>
+                        )}
+                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-white text-xs font-bold">Ändern</span>
+                         </div>
                     </div>
-                )}
-                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-white text-xs font-bold">Ändern</span>
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        className="hidden" 
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                    />
+                </div>
+
+                {/* Form Fields */}
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                     <div className="space-y-1">
+                        <label className="text-xs text-slate-400 uppercase font-bold">Name</label>
+                        <input name="name" value={playerData.name} onChange={handleInputChange} type="text" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" />
+                     </div>
+                     <div className="space-y-1">
+                        <label className="text-xs text-slate-400 uppercase font-bold">Team</label>
+                        <input name="team" value={playerData.team} onChange={handleInputChange} type="text" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" />
+                     </div>
+                     <div className="space-y-1">
+                        <label className="text-xs text-slate-400 uppercase font-bold">Position</label>
+                        <select 
+                            name="position" 
+                            value={playerData.position} 
+                            onChange={handleInputChange}
+                            className="w-full bg-slate-950 border border-slate-600 rounded p-2 text-white outline-none focus:border-yellow-400 appearance-none"
+                        >
+                            {Object.values(Position).map(p => <option key={p} value={p} className="bg-slate-900 text-white">{p}</option>)}
+                        </select>
+                     </div>
+                     <div className="space-y-1">
+                        <label className="text-xs text-slate-400 uppercase font-bold">Starker Fuß</label>
+                        <select 
+                            name="foot" 
+                            value={playerData.foot} 
+                            onChange={handleInputChange}
+                            className="w-full bg-slate-950 border border-slate-600 rounded p-2 text-white outline-none focus:border-yellow-400 appearance-none"
+                        >
+                            {Object.values(Foot).map(f => <option key={f} value={f} className="bg-slate-900 text-white">{f}</option>)}
+                        </select>
+                     </div>
+                     <div className="space-y-1">
+                        <label className="text-xs text-slate-400 uppercase font-bold">Größe (cm)</label>
+                        <input name="height" value={playerData.height} onChange={handleInputChange} type="text" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" />
+                     </div>
+                     <div className="space-y-1">
+                        <label className="text-xs text-slate-400 uppercase font-bold">Geburtsdatum</label>
+                        <input name="dob" value={playerData.dob} onChange={handleInputChange} type="date" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" />
+                     </div>
+                     <div className="space-y-1">
+                        <label className="text-xs text-slate-400 uppercase font-bold">Land</label>
+                        <input name="country" value={playerData.country} onChange={handleInputChange} type="text" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" />
+                     </div>
                 </div>
             </div>
-            <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleImageUpload} 
-                accept="image/*" 
-                className="hidden" 
-            />
+        </section>
 
-            <input 
-                name="name"
-                value={playerData.name}
-                onChange={handleInputChange}
-                type="text" 
-                placeholder="Spielername"
-                className="text-2xl font-bold text-white mb-1 bg-transparent text-center focus:text-yellow-400 outline-none w-full" 
-            />
-            <input 
-                name="team"
-                value={playerData.team}
-                onChange={handleInputChange}
-                type="text"
-                placeholder="Vereinsname" 
-                className="text-slate-400 text-sm mb-4 bg-transparent text-center outline-none w-full"
-            />
-
-            <div className="w-full grid grid-cols-2 gap-4 text-left mt-2">
-                <div className="bg-slate-900 p-3 rounded border border-slate-700">
-                    <label className="text-xs text-yellow-400 uppercase font-bold block mb-1">Position</label>
-                    <select 
-                        name="position"
-                        value={playerData.position}
-                        onChange={handleInputChange}
-                        className="w-full bg-transparent text-white outline-none"
-                    >
-                        {Object.values(Position).map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                </div>
-                <div className="bg-slate-900 p-3 rounded border border-slate-700">
-                    <label className="text-xs text-yellow-400 uppercase font-bold block mb-1">Fuß</label>
-                    <select 
-                        name="foot"
-                        value={playerData.foot}
-                        onChange={handleInputChange}
-                        className="w-full bg-transparent text-white outline-none"
-                    >
-                         {Object.values(Foot).map(f => <option key={f} value={f}>{f}</option>)}
-                    </select>
-                </div>
-                <div className="bg-slate-900 p-3 rounded border border-slate-700">
-                    <label className="text-xs text-slate-500 uppercase font-bold block mb-1">Größe (cm)</label>
-                    <input 
-                        name="height"
-                        value={playerData.height}
-                        onChange={handleInputChange}
-                        type="number" 
-                        placeholder="185" 
-                        className="w-full bg-transparent text-white outline-none" 
-                    />
-                </div>
-                <div className="bg-slate-900 p-3 rounded border border-slate-700">
-                    <label className="text-xs text-slate-500 uppercase font-bold block mb-1">Jahrgang</label>
-                    <input 
-                        name="dob"
-                        value={playerData.dob}
-                        onChange={handleInputChange}
-                        type="number" 
-                        placeholder="2000" 
-                        className="w-full bg-transparent text-white outline-none" 
-                    />
-                </div>
-                <div className="col-span-2 bg-slate-900 p-3 rounded border border-slate-700">
-                     <label className="text-xs text-slate-500 uppercase font-bold block mb-1">Nationalität</label>
+        {/* Match Context */}
+        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+             <div className="flex items-center gap-2 mb-6 border-b border-slate-700 pb-2">
+                <Activity className="w-5 h-5 text-yellow-400" />
+                <h2 className="text-xl font-bold text-white uppercase tracking-wider">Match Details</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                 <div className="space-y-1">
+                    <label className="text-xs text-slate-400 uppercase font-bold">Saison</label>
+                    <input name="season" value={playerData.season} onChange={handleInputChange} type="text" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-xs text-slate-400 uppercase font-bold">Gegner</label>
+                    <input name="opponent" value={playerData.opponent} onChange={handleInputChange} type="text" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-xs text-slate-400 uppercase font-bold">Datum</label>
+                    <input name="date" value={playerData.date} onChange={handleInputChange} type="date" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-xs text-slate-400 uppercase font-bold">Formation</label>
+                    <input name="formation" value={playerData.formation} onChange={handleInputChange} type="text" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-xs text-slate-400 uppercase font-bold">Ergebnis</label>
+                    <input name="result" value={playerData.result} onChange={handleInputChange} type="text" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-xs text-slate-400 uppercase font-bold">Gespielte Min.</label>
+                    <input name="minutes" value={playerData.minutes} onChange={handleInputChange} type="text" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-xs text-slate-400 uppercase font-bold">Tore</label>
+                    <input name="goals" value={playerData.goals} onChange={handleInputChange} type="number" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" />
+                 </div>
+                 <div className="space-y-1">
+                    <label className="text-xs text-slate-400 uppercase font-bold">Assists</label>
+                    <input name="assists" value={playerData.assists} onChange={handleInputChange} type="number" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" />
+                 </div>
+                 <div className="md:col-span-4 flex items-center gap-2 mt-2">
                      <input 
-                        name="country"
-                        value={playerData.country}
+                        type="checkbox" 
+                        name="starter" 
+                        checked={playerData.starter} 
                         onChange={handleInputChange}
-                        type="text" 
-                        placeholder="Land" 
-                        className="w-full bg-transparent text-white outline-none" 
+                        className="w-4 h-4 accent-yellow-400"
+                     />
+                     <label className="text-sm text-white">Startelf Einsatz</label>
+                 </div>
+            </div>
+        </section>
+
+        {/* Charts Section - Using Extracted Components */}
+        <ChartSection title="Charaktereigenschaften" categoryKey="character" data={attributes.character} onAttrChange={handleAttrChange} />
+        <ChartSection title="Technik" categoryKey="technique" data={attributes.technique} onAttrChange={handleAttrChange} />
+        <ChartSection title="Athletik" categoryKey="athletics" data={attributes.athletics} onAttrChange={handleAttrChange} />
+        <ChartSection title="Mentalität" categoryKey="mentality" data={attributes.mentality} onAttrChange={handleAttrChange} />
+        <ChartSection title="Taktik" categoryKey="tactics" data={attributes.tactics} onAttrChange={handleAttrChange} />
+
+        {/* Textual Analysis */}
+        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+             <div className="flex items-center gap-2 mb-6 border-b border-slate-700 pb-2">
+                <Activity className="w-5 h-5 text-yellow-400" />
+                <h2 className="text-xl font-bold text-white uppercase tracking-wider">Taktische & Textanalyse</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="space-y-2">
+                    <label className="text-xs text-green-400 uppercase font-bold">Stärken</label>
+                    <textarea 
+                        name="strengths" value={playerData.strengths} onChange={handleInputChange}
+                        className="w-full h-24 bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-green-400 outline-none resize-none"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <label className="text-xs text-red-400 uppercase font-bold">Schwächen</label>
+                    <textarea 
+                        name="weaknesses" value={playerData.weaknesses} onChange={handleInputChange}
+                        className="w-full h-24 bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-red-400 outline-none resize-none"
                     />
                 </div>
             </div>
-        </div>
 
-        {/* Match Context & Stats */}
-        <div className="lg:col-span-2 space-y-6">
-            <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
-                <div className="flex items-center gap-2 mb-4 border-b border-slate-700 pb-2">
-                    <Calendar className="w-5 h-5 text-yellow-400" />
-                    <h2 className="text-xl font-bold text-white uppercase tracking-wider">Spielkontext</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div className="space-y-2">
+                    <label className="text-xs text-blue-400 uppercase font-bold">Im Ballbesitz</label>
+                    <textarea 
+                        name="tacticalPossession" value={playerData.tacticalPossession} onChange={handleInputChange}
+                        className="w-full h-32 bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-blue-400 outline-none resize-none"
+                    />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <label className="text-xs text-slate-400 uppercase font-bold">Gegner</label>
-                        <input 
-                            name="opponent"
-                            value={playerData.opponent}
-                            onChange={handleInputChange}
-                            type="text" 
-                            className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" 
-                            placeholder="Gegnerisches Team" 
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs text-slate-400 uppercase font-bold">Wettbewerb</label>
-                        <input 
-                            name="competition"
-                            value={playerData.competition}
-                            onChange={handleInputChange}
-                            type="text" 
-                            className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" 
-                            placeholder="Liga Name" 
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs text-slate-400 uppercase font-bold">Saison</label>
-                        <input 
-                            name="season"
-                            value={playerData.season}
-                            onChange={handleInputChange}
-                            type="text" 
-                            className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" 
-                            placeholder="2024/25" 
-                        />
-                    </div>
-                     <div className="space-y-1">
-                        <label className="text-xs text-slate-400 uppercase font-bold">Datum</label>
-                        <input 
-                            name="date"
-                            value={playerData.date}
-                            onChange={handleInputChange}
-                            type="date" 
-                            className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" 
-                        />
-                    </div>
-                     <div className="space-y-1">
-                        <label className="text-xs text-slate-400 uppercase font-bold">Formation</label>
-                        <input 
-                            name="formation"
-                            value={playerData.formation}
-                            onChange={handleInputChange}
-                            type="text" 
-                            className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" 
-                            placeholder="4-3-3" 
-                        />
-                    </div>
-                    <div className="space-y-1">
-                         <label className="text-xs text-slate-400 uppercase font-bold">Ergebnis</label>
-                         <input 
-                            name="result"
-                            value={playerData.result}
-                            onChange={handleInputChange}
-                            type="text" 
-                            className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none" 
-                            placeholder="2 - 1" 
-                        />
-                    </div>
+                <div className="space-y-2">
+                    <label className="text-xs text-orange-400 uppercase font-bold">Gegner Ballbesitz</label>
+                    <textarea 
+                        name="tacticalNoPossession" value={playerData.tacticalNoPossession} onChange={handleInputChange}
+                        className="w-full h-32 bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-orange-400 outline-none resize-none"
+                    />
                 </div>
-            </section>
-
-             <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
-                <div className="flex items-center gap-2 mb-4 border-b border-slate-700 pb-2">
-                    <Activity className="w-5 h-5 text-yellow-400" />
-                    <h2 className="text-xl font-bold text-white uppercase tracking-wider">Statistiken</h2>
+                <div className="space-y-2">
+                    <label className="text-xs text-slate-400 uppercase font-bold">Defensivverhalten</label>
+                    <textarea 
+                        name="tacticalDefensive" value={playerData.tacticalDefensive} onChange={handleInputChange}
+                        className="w-full h-32 bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-slate-400 outline-none resize-none"
+                    />
                 </div>
-                <div className="grid grid-cols-4 gap-4 text-center">
-                    <div className="bg-slate-900 p-3 rounded border border-slate-600">
-                        <input 
-                            name="minutes"
-                            value={playerData.minutes}
-                            onChange={handleInputChange}
-                            type="text"
-                            className="w-full bg-transparent text-2xl font-bold text-yellow-400 text-center outline-none"
-                        />
-                        <span className="text-xs text-slate-400 uppercase">Min</span>
-                    </div>
-                    <div className="bg-slate-900 p-3 rounded border border-slate-600">
-                        <input 
-                            name="goals"
-                            value={playerData.goals}
-                            onChange={handleInputChange}
-                            type="number" 
-                            className="w-full bg-transparent text-2xl font-bold text-green-400 text-center outline-none" 
-                        />
-                         <span className="text-xs text-slate-400 uppercase">Tore</span>
-                    </div>
-                    <div className="bg-slate-900 p-3 rounded border border-slate-600">
-                        <input 
-                            name="assists"
-                            value={playerData.assists}
-                            onChange={handleInputChange}
-                            type="number" 
-                            className="w-full bg-transparent text-2xl font-bold text-blue-400 text-center outline-none" 
-                        />
-                         <span className="text-xs text-slate-400 uppercase">Vorlagen</span>
-                    </div>
-                    <div className="bg-slate-900 p-3 rounded border border-slate-600 flex items-center justify-center">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input 
-                                name="starter"
-                                checked={playerData.starter}
-                                onChange={handleInputChange}
-                                type="checkbox" 
-                                className="w-5 h-5 accent-yellow-400" 
-                            />
-                            <span className="text-xs text-slate-400 uppercase font-bold">Startelf</span>
-                        </label>
-                    </div>
+                <div className="space-y-2">
+                    <label className="text-xs text-slate-400 uppercase font-bold">Offensivverhalten</label>
+                    <textarea 
+                        name="tacticalOffensive" value={playerData.tacticalOffensive} onChange={handleInputChange}
+                        className="w-full h-32 bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-slate-400 outline-none resize-none"
+                    />
                 </div>
-             </section>
-        </div>
-      </div>
+            </div>
 
-      {/* 5 Diagrams Sections */}
-      <section>
-          <div className="flex items-center gap-2 mb-6">
-              <BarChart2 className="w-6 h-6 text-yellow-400" />
-              <h2 className="text-2xl font-bold text-white uppercase tracking-wider">Detail-Analyse (Diagramme)</h2>
-          </div>
-          
-          <ChartSection title="Charaktereigenschaften" dataObj={attributes.character} category="character" />
-          <ChartSection title="Technik" dataObj={attributes.technique} category="technique" />
-          <ChartSection title="Athletik" dataObj={attributes.athletics} category="athletics" />
-          <ChartSection title="Mentalität" dataObj={attributes.mentality} category="mentality" />
-          <ChartSection title="Taktik" dataObj={attributes.tactics} category="tactics" />
-      </section>
+            <div className="mt-6 space-y-2">
+                <label className="text-xs text-yellow-400 uppercase font-bold">Zusammenfassung & Fazit</label>
+                <textarea 
+                    name="tacticalSummary" value={playerData.tacticalSummary} onChange={handleInputChange}
+                    className="w-full h-32 bg-slate-900 border border-slate-600 rounded p-2 text-white focus:border-yellow-400 outline-none resize-none"
+                />
+            </div>
+        </section>
 
-      {/* Strengths & Weaknesses Text */}
-      <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-slate-900/50 p-4 rounded border border-green-900/50">
-                <h3 className="text-green-400 font-bold mb-2 text-sm uppercase flex items-center gap-2">
-                     <div className="w-2 h-2 rounded-full bg-green-400"></div> Stärken
-                </h3>
-                <textarea 
-                    name="strengths"
-                    value={playerData.strengths}
-                    onChange={handleInputChange}
-                    className="w-full bg-transparent text-sm text-slate-300 outline-none h-20 resize-none" 
-                    placeholder="Besondere Fähigkeiten des Spielers..." 
-                />
-            </div>
-            <div className="bg-slate-900/50 p-4 rounded border border-red-900/50">
-                <h3 className="text-red-400 font-bold mb-2 text-sm uppercase flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-red-400"></div> Schwächen
-                </h3>
-                <textarea 
-                    name="weaknesses"
-                    value={playerData.weaknesses}
-                    onChange={handleInputChange}
-                    className="w-full bg-transparent text-sm text-slate-300 outline-none h-20 resize-none" 
-                    placeholder="Verbesserungspotenzial..." 
-                />
-            </div>
-        </div>
-      </section>
-
-      {/* Tactical Behavior - PDF Structure */}
-      <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
-        <div className="flex items-center gap-2 mb-6 border-b border-slate-700 pb-2">
-            <Flag className="w-5 h-5 text-yellow-400" />
-            <h2 className="text-xl font-bold text-white uppercase tracking-wider">Taktisches Profil</h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <div className="space-y-2">
-                <label className="text-xs text-blue-400 uppercase font-bold">Im Ballbesitz</label>
-                <textarea 
-                    name="tacticalPossession"
-                    value={playerData.tacticalPossession}
-                    onChange={handleInputChange}
-                    className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white h-24 focus:border-blue-400 outline-none resize-none" 
-                    placeholder="Passspiel, Dribbling, Entscheidungsfindung..." 
-                />
-            </div>
-            <div className="space-y-2">
-                <label className="text-xs text-red-400 uppercase font-bold">Gegner Ballbesitz</label>
-                <textarea 
-                    name="tacticalNoPossession"
-                    value={playerData.tacticalNoPossession}
-                    onChange={handleInputChange}
-                    className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white h-24 focus:border-red-400 outline-none resize-none" 
-                    placeholder="Positionierung, Pressing, Rückwärtsbewegung..." 
-                />
-            </div>
-            <div className="space-y-2">
-                <label className="text-xs text-red-400 uppercase font-bold">Defensive</label>
-                <textarea 
-                    name="tacticalDefensive"
-                    value={playerData.tacticalDefensive}
-                    onChange={handleInputChange}
-                    className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white h-24 focus:border-red-400 outline-none resize-none" 
-                    placeholder="Defensives Zweikampfverhalten..." 
-                />
-            </div>
-             <div className="space-y-2">
-                <label className="text-xs text-green-400 uppercase font-bold">Offensive</label>
-                <textarea 
-                    name="tacticalOffensive"
-                    value={playerData.tacticalOffensive}
-                    onChange={handleInputChange}
-                    className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white h-24 focus:border-green-400 outline-none resize-none" 
-                    placeholder="Laufwege, Abschluss, Kreativität..." 
-                />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-                <label className="text-xs text-yellow-400 uppercase font-bold">Zusammenfassung</label>
-                <textarea 
-                    name="tacticalSummary"
-                    value={playerData.tacticalSummary}
-                    onChange={handleInputChange}
-                    className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white h-24 focus:border-yellow-400 outline-none resize-none" 
-                    placeholder="Abschließendes Urteil zur Leistung..." 
-                />
-            </div>
-        </div>
-      </section>
-
-      {/* Save Action */}
-      <div className="sticky bottom-6 flex justify-end">
+        {/* Save Button */}
+        <div className="sticky bottom-6 flex justify-end">
           <button 
             onClick={generatePDF}
             className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-300 text-slate-900 font-bold py-3 px-8 rounded-full shadow-lg transform hover:scale-105 transition-all"
@@ -756,8 +582,7 @@ const PlayerScouting: React.FC = () => {
               <Save className="w-5 h-5" />
               Spieler-Bericht als PDF speichern
           </button>
-      </div>
-
+        </div>
     </div>
   );
 };

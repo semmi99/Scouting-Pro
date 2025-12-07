@@ -29,6 +29,94 @@
         .animate-fade-in {
             animation: fadeIn 0.4s ease-out forwards;
         }
+
+        /* Print Styles - High Priority */
+        @media print {
+            @page {
+                size: landscape;
+                margin: 5mm;
+            }
+            html, body {
+                height: 100%;
+                margin: 0 !important;
+                padding: 0 !important;
+                background-color: white !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color: black !important;
+                overflow: visible !important;
+            }
+            
+            /* Hide non-printable elements */
+            header, footer, nav, .no-print, button {
+                display: none !important;
+            }
+
+            /* Container overrides for print */
+            #root, main, .max-w-7xl, .max-w-6xl {
+                width: 100% !important;
+                max-width: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                background-color: white !important;
+                display: block !important;
+            }
+
+            .print-container {
+                width: 100% !important;
+                max-width: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                background-color: white !important;
+                display: block !important;
+            }
+
+            /* Force visibility of grid lines */
+            .print-border {
+                border: 1px solid #000 !important;
+            }
+            
+            /* Typography fix for print */
+            .text-white, .text-slate-200, .text-slate-300, .text-slate-400, .text-slate-500 {
+                color: #000 !important;
+            }
+            .text-yellow-400 {
+                color: #d97706 !important; /* Darker orange/yellow for print visibility */
+            }
+
+            /* Background resets */
+            .bg-slate-800, .bg-slate-900, .bg-slate-950, .bg-slate-900\/50, .bg-slate-900\/30 {
+                background-color: transparent !important;
+            }
+            
+            /* Ensure event pills have contrast */
+            .bg-slate-700 {
+                background-color: #eee !important;
+                color: #000 !important;
+                border: 1px solid #ccc !important;
+            }
+
+            /* Layout Fixes */
+            .grid {
+                display: grid !important;
+            }
+            
+            /* Ensure full height for calendar cells */
+            .h-24, .h-full, .min-h-\[400px\], .min-h-\[100px\] {
+                height: auto !important;
+                min-height: 80px !important;
+            }
+            
+            /* Hide scrollbars in print */
+            .overflow-y-auto, .overflow-x-auto {
+                overflow: visible !important;
+                height: auto !important;
+            }
+        }
     </style>
   <script type="importmap">
 {

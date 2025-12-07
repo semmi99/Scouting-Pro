@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Trash2, Save, Calendar, MapPin, Flag, User, FileText, Activity, Goal, Users, Image as ImageIcon } from 'lucide-react';
 import { PlayerRosterItem, PlayerInfoItem } from '../types';
 import { jsPDF } from 'jspdf';
@@ -122,55 +122,72 @@ const RosterTable = ({
 // --- Main Component ---
 
 const TeamScouting: React.FC = () => {
-  const [homeRoster, setHomeRoster] = useState<PlayerRosterItem[]>([
-    { id: 'h1', number: '1', name: '', minutes: '90', goalsAssists: '0/0', rating: 7 },
-  ]);
-
-  const [awayRoster, setAwayRoster] = useState<PlayerRosterItem[]>([
-    { id: 'a1', number: '1', name: '', minutes: '90', goalsAssists: '0/0', rating: 7 },
-  ]);
-
-  const [playerInfos, setPlayerInfos] = useState<PlayerInfoItem[]>([
-    { id: 'i1', number: '', name: '', info: '' },
-  ]);
-
-  // Additional Images
-  const [reportImages, setReportImages] = useState<string[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [formData, setFormData] = useState({
-    competition: '',
-    location: '',
-    date: '',
-    kickoff: '',
-    homeTeam: '',
-    awayTeam: '',
-    homeCoach: '',
-    awayCoach: '',
-    scoutName: '',
-    weather: 'Sonnig / Klar',
-    pitchCondition: 'Ausgezeichnet',
-    summary: '',
-    formation: '',
-    systemInfo: '',
-    currentForm: '',
-    currentFormInfo: '',
-    
-    cornersOffensive: '',
-    cornersDefensive: '',
-    freekicksOffensive: '',
-    freekicksDefensive: '',
-
-    swotGeneral: '',
-    swotAttack: '',
-    swotDefense: '',
-    swotStrengths: '',
-    swotWeaknesses: ''
+  
+  // Load initial state from LocalStorage
+  const [homeRoster, setHomeRoster] = useState<PlayerRosterItem[]>(() => {
+    const saved = localStorage.getItem('scouting_team_homeRoster');
+    return saved ? JSON.parse(saved) : [{ id: 'h1', number: '1', name: '', minutes: '90', goalsAssists: '0/0', rating: 7 }];
   });
+
+  const [awayRoster, setAwayRoster] = useState<PlayerRosterItem[]>(() => {
+    const saved = localStorage.getItem('scouting_team_awayRoster');
+    return saved ? JSON.parse(saved) : [{ id: 'a1', number: '1', name: '', minutes: '90', goalsAssists: '0/0', rating: 7 }];
+  });
+
+  const [playerInfos, setPlayerInfos] = useState<PlayerInfoItem[]>(() => {
+    const saved = localStorage.getItem('scouting_team_playerInfos');
+    return saved ? JSON.parse(saved) : [{ id: 'i1', number: '', name: '', info: '' }];
+  });
+
+  const [reportImages, setReportImages] = useState<string[]>(() => {
+    const saved = localStorage.getItem('scouting_team_images');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [formData, setFormData] = useState(() => {
+    const saved = localStorage.getItem('scouting_team_formData');
+    return saved ? JSON.parse(saved) : {
+        competition: '',
+        location: '',
+        date: '',
+        kickoff: '',
+        homeTeam: '',
+        awayTeam: '',
+        homeCoach: '',
+        awayCoach: '',
+        scoutName: '',
+        weather: 'Sonnig / Klar',
+        pitchCondition: 'Ausgezeichnet',
+        summary: '',
+        formation: '',
+        systemInfo: '',
+        currentForm: '',
+        currentFormInfo: '',
+        cornersOffensive: '',
+        cornersDefensive: '',
+        freekicksOffensive: '',
+        freekicksDefensive: '',
+        swotGeneral: '',
+        swotAttack: '',
+        swotDefense: '',
+        swotStrengths: '',
+        swotWeaknesses: ''
+    };
+  });
+
+  // --- Persistence Effects (Auto-Save) ---
+  useEffect(() => { localStorage.setItem('scouting_team_homeRoster', JSON.stringify(homeRoster)); }, [homeRoster]);
+  useEffect(() => { localStorage.setItem('scouting_team_awayRoster', JSON.stringify(awayRoster)); }, [awayRoster]);
+  useEffect(() => { localStorage.setItem('scouting_team_playerInfos', JSON.stringify(playerInfos)); }, [playerInfos]);
+  useEffect(() => { localStorage.setItem('scouting_team_images', JSON.stringify(reportImages)); }, [reportImages]);
+  useEffect(() => { localStorage.setItem('scouting_team_formData', JSON.stringify(formData)); }, [formData]);
+
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev: any) => ({ ...prev, [name]: value }));
   };
 
   const addPlayer = (isHome: boolean) => {
@@ -577,22 +594,22 @@ const TeamScouting: React.FC = () => {
                         name="weather"
                         value={formData.weather}
                         onChange={handleInputChange}
-                        className="w-1/2 bg-slate-900 border border-slate-600 rounded p-2 text-white text-xs outline-none"
+                        className="w-1/2 bg-slate-950 border border-slate-600 rounded p-2 text-white font-medium text-xs outline-none focus:border-yellow-400 appearance-none"
                     >
-                        <option>Sonnig</option>
-                        <option>Regen</option>
-                        <option>Wolken</option>
+                        <option className="bg-slate-900 text-white">Sonnig</option>
+                        <option className="bg-slate-900 text-white">Regen</option>
+                        <option className="bg-slate-900 text-white">Wolken</option>
                     </select>
                     <select 
                         name="pitchCondition"
                         value={formData.pitchCondition}
                         onChange={handleInputChange}
-                        className="w-1/2 bg-slate-900 border border-slate-600 rounded p-2 text-white text-xs outline-none"
+                        className="w-1/2 bg-slate-950 border border-slate-600 rounded p-2 text-white font-medium text-xs outline-none focus:border-yellow-400 appearance-none"
                     >
-                        <option>Top</option>
-                        <option>Gut</option>
-                        <option>Mittel</option>
-                        <option>Schlecht</option>
+                        <option className="bg-slate-900 text-white">Top</option>
+                        <option className="bg-slate-900 text-white">Gut</option>
+                        <option className="bg-slate-900 text-white">Mittel</option>
+                        <option className="bg-slate-900 text-white">Schlecht</option>
                     </select>
                 </div>
              </div>
@@ -629,7 +646,7 @@ const TeamScouting: React.FC = () => {
                     players={homeRoster} 
                     isHome={true} 
                     coachName={formData.homeCoach}
-                    onCoachChange={(val) => setFormData(prev => ({...prev, homeCoach: val}))}
+                    onCoachChange={(val) => setFormData((prev: any) => ({...prev, homeCoach: val}))}
                     onAddPlayer={() => addPlayer(true)}
                     onRemovePlayer={(id) => removePlayer(id, true)}
                     onUpdatePlayer={(id, field, val) => updatePlayer(id, field, val, true)}
@@ -640,7 +657,7 @@ const TeamScouting: React.FC = () => {
                     players={awayRoster} 
                     isHome={false} 
                     coachName={formData.awayCoach}
-                    onCoachChange={(val) => setFormData(prev => ({...prev, awayCoach: val}))}
+                    onCoachChange={(val) => setFormData((prev: any) => ({...prev, awayCoach: val}))}
                     onAddPlayer={() => addPlayer(false)}
                     onRemovePlayer={(id) => removePlayer(id, false)}
                     onUpdatePlayer={(id, field, val) => updatePlayer(id, field, val, false)}

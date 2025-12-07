@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Users, Plus, Trash2, Save, Star } from 'lucide-react';
 import { ShadowPlayer, Position } from '../types';
@@ -145,18 +144,18 @@ const ShadowTeams: React.FC = () => {
                  <select 
                     value={newPlayer.position}
                     onChange={e => setNewPlayer({...newPlayer, position: e.target.value as Position})}
-                    className="bg-slate-900 border border-slate-600 rounded p-2 text-white outline-none focus:border-blue-400"
+                    className="bg-slate-950 border border-slate-600 rounded p-2 text-white outline-none focus:border-blue-400"
                 >
-                    {Object.values(Position).map(p => <option key={p} value={p}>{p}</option>)}
+                    {Object.values(Position).map(p => <option key={p} value={p} className="bg-slate-900 text-white">{p}</option>)}
                 </select>
                 <select 
                     value={newPlayer.priority}
                     onChange={e => setNewPlayer({...newPlayer, priority: e.target.value as any})}
-                    className="bg-slate-900 border border-slate-600 rounded p-2 text-white outline-none focus:border-blue-400"
+                    className="bg-slate-950 border border-slate-600 rounded p-2 text-white outline-none focus:border-blue-400"
                 >
-                    <option value="A">A - Top Target</option>
-                    <option value="B">B - Alternative</option>
-                    <option value="C">C - Perspektivspieler</option>
+                    <option value="A" className="bg-slate-900 text-white">A - Top Target</option>
+                    <option value="B" className="bg-slate-900 text-white">B - Alternative</option>
+                    <option value="C" className="bg-slate-900 text-white">C - Perspektivspieler</option>
                 </select>
                 <input 
                     type="text" placeholder="Alter" 

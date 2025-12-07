@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { MapPin, Search, CalendarPlus, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 import { MatchSearchResult, CalendarEvent } from '../types';
@@ -118,11 +117,11 @@ const MatchFinder: React.FC<MatchFinderProps> = ({ onAddToCalendar }) => {
                 <select 
                     value={radius}
                     onChange={e => setRadius(e.target.value)}
-                    className="bg-slate-800 text-white p-2 rounded border border-slate-600 outline-none focus:border-yellow-400 opacity-50 cursor-not-allowed"
+                    className="bg-slate-950 text-white p-2 rounded border border-slate-600 outline-none focus:border-yellow-400 opacity-50 cursor-not-allowed appearance-none"
                     disabled
                     title="Umkreissuche in API v3 nicht direkt verfügbar"
                 >
-                    <option value="20">Stadt-Filter aktiv</option>
+                    <option value="20" className="bg-slate-900 text-white">Stadt-Filter aktiv</option>
                 </select>
                 <input 
                     type="date" 

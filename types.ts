@@ -178,7 +178,7 @@ export interface CalendarEvent {
   date: string; // YYYY-MM-DD
   time: string;
   location: string;
-  type: 'Match' | 'Training' | 'Meeting';
+  type: 'Match' | 'Training' | 'Meeting' | 'Scouting';
 }
 
 export interface MatchSearchResult {
