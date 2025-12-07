@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { MapPin, Search, CalendarPlus, AlertCircle, Wifi, WifiOff } from 'lucide-react';
 import { MatchSearchResult, CalendarEvent } from '../types';
@@ -59,16 +60,26 @@ const MatchFinder: React.FC<MatchFinderProps> = ({ onAddToCalendar }) => {
                 // Loose search: City matches venue OR team name contains city
                 return venueCity.includes(cityLower) || homeTeam.includes(cityLower) || awayTeam.includes(cityLower);
             })
-            .map((item: any) => ({
-                id: item.fixture.id.toString(),
-                homeTeam: item.teams.home.name,
-                awayTeam: item.teams.away.name,
-                date: item.fixture.date.split('T')[0],
-                time: item.fixture.date.split('T')[1].substring(0, 5),
-                location: `${item.fixture.venue.name}, ${item.fixture.venue.city}`,
-                league: item.league.name,
-                distance: '-' // Cannot calculate real distance without user geo-coords
-            }));
+            .map((item: any) => {
+                // Parse date and format to German time (Europe/Berlin handles Winter/Summer time automatically)
+                const matchDate = new Date(item.fixture.date);
+                const timeStr = matchDate.toLocaleTimeString('de-DE', { 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    timeZone: 'Europe/Berlin' 
+                });
+
+                return {
+                    id: item.fixture.id.toString(),
+                    homeTeam: item.teams.home.name,
+                    awayTeam: item.teams.away.name,
+                    date: item.fixture.date.split('T')[0],
+                    time: timeStr,
+                    location: `${item.fixture.venue.name}, ${item.fixture.venue.city}`,
+                    league: item.league.name,
+                    distance: '-' // Cannot calculate real distance without user geo-coords
+                };
+            });
 
         setResults(matches);
         if (matches.length === 0) {
@@ -113,7 +124,6 @@ const MatchFinder: React.FC<MatchFinderProps> = ({ onAddToCalendar }) => {
                     onChange={e => setCity(e.target.value)}
                     className="bg-slate-800 text-white p-2 rounded border border-slate-600 outline-none focus:border-yellow-400"
                 />
-                {/* Visual placeholder for radius, not used in API v3 simple call */}
                 <select 
                     value={radius}
                     onChange={e => setRadius(e.target.value)}

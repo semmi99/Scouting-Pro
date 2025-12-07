@@ -30,92 +30,118 @@
             animation: fadeIn 0.4s ease-out forwards;
         }
 
-        /* Print Styles - High Priority */
+        /* --- PRINT STYLES (THE FINAL FIX) --- */
         @media print {
             @page {
                 size: landscape;
                 margin: 5mm;
             }
-            html, body {
-                height: 100%;
-                margin: 0 !important;
-                padding: 0 !important;
-                background-color: white !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                color: black !important;
-                overflow: visible !important;
+            
+            /* Hide everything by default */
+            body * {
+                visibility: hidden;
+            }
+
+            /* Only show the element with id 'printable-content' and its children */
+            #printable-content, #printable-content * {
+                visibility: visible;
+            }
+
+            /* Position the printable content at the top-left of the page */
+            #printable-content {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                background-color: white; /* Default base */
+                color: black;
             }
             
-            /* Hide non-printable elements */
-            header, footer, nav, .no-print, button {
+            /* --- CALENDAR SPECIFIC PRINTING --- */
+            .print-calendar-root {
+                background-color: white !important;
+                color: black !important;
+            }
+            .print-calendar-root .bg-slate-800, 
+            .print-calendar-root .bg-slate-900, 
+            .print-calendar-root .bg-slate-950 {
+                background-color: transparent !important;
+                border-color: #cbd5e1 !important; /* light gray borders */
+                color: black !important;
+            }
+            .print-calendar-root .text-white,
+            .print-calendar-root .text-slate-300,
+            .print-calendar-root .text-slate-400 {
+                color: black !important;
+            }
+            /* Keep badges colored */
+            .print-calendar-root .bg-green-600 { background-color: #16a34a !important; color: white !important; -webkit-print-color-adjust: exact; }
+            .print-calendar-root .bg-purple-600 { background-color: #9333ea !important; color: white !important; -webkit-print-color-adjust: exact; }
+            
+            /* --- SHADOW TEAM PITCH SPECIFIC PRINTING --- */
+            .print-pitch-root {
+                width: 100% !important;
+                height: 100vh !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }
+            
+            /* Force the pitch to look like a pitch */
+            .print-pitch-container {
+                background-color: #064e3b !important; /* emerald-800 */
+                border: 4px solid black !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                width: 260mm !important; /* A4 width approx */
+                height: 170mm !important;
+                position: relative !important;
+                transform: scale(0.95); /* Fit margins */
+            }
+            
+            /* Whiten lines on the pitch */
+            .print-pitch-container div[class*="border-white"] {
+                border-color: rgba(255,255,255,0.6) !important;
+            }
+            .print-pitch-container div[class*="bg-white"] {
+                background-color: rgba(255,255,255,0.6) !important;
+            }
+
+            /* Player Cards on Pitch */
+            .print-pitch-container .print-card-mini {
+                background-color: white !important;
+                color: black !important;
+                border: 2px solid black !important;
+                box-shadow: none !important;
+            }
+            .print-pitch-container .print-card-mini .text-white,
+            .print-pitch-container .print-card-mini .text-slate-400 {
+                color: black !important;
+            }
+            
+            /* Hide pulsing buttons in print */
+            .print-pitch-container .animate-pulse {
+                display: none !important;
+            }
+            
+            /* Hide UI buttons on cards */
+            .print-pitch-container button {
                 display: none !important;
             }
 
-            /* Container overrides for print */
-            #root, main, .max-w-7xl, .max-w-6xl {
-                width: 100% !important;
-                max-width: none !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                box-shadow: none !important;
-                border: none !important;
+            /* --- SHADOW TEAM LIST SPECIFIC PRINTING --- */
+            .print-list-root {
                 background-color: white !important;
-                display: block !important;
             }
-
-            .print-container {
-                width: 100% !important;
-                max-width: none !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                box-shadow: none !important;
-                border: none !important;
+            .print-list-root .bg-slate-800 {
                 background-color: white !important;
-                display: block !important;
-            }
-
-            /* Force visibility of grid lines */
-            .print-border {
-                border: 1px solid #000 !important;
-            }
-            
-            /* Typography fix for print */
-            .text-white, .text-slate-200, .text-slate-300, .text-slate-400, .text-slate-500 {
-                color: #000 !important;
-            }
-            .text-yellow-400 {
-                color: #d97706 !important; /* Darker orange/yellow for print visibility */
-            }
-
-            /* Background resets */
-            .bg-slate-800, .bg-slate-900, .bg-slate-950, .bg-slate-900\/50, .bg-slate-900\/30 {
-                background-color: transparent !important;
-            }
-            
-            /* Ensure event pills have contrast */
-            .bg-slate-700 {
-                background-color: #eee !important;
-                color: #000 !important;
                 border: 1px solid #ccc !important;
             }
-
-            /* Layout Fixes */
-            .grid {
-                display: grid !important;
-            }
+            .print-list-root .text-white { color: black !important; }
+            .print-list-root .text-slate-400 { color: #444 !important; }
             
-            /* Ensure full height for calendar cells */
-            .h-24, .h-full, .min-h-\[400px\], .min-h-\[100px\] {
-                height: auto !important;
-                min-height: 80px !important;
-            }
-            
-            /* Hide scrollbars in print */
-            .overflow-y-auto, .overflow-x-auto {
-                overflow: visible !important;
-                height: auto !important;
-            }
         }
     </style>
   <script type="importmap">
@@ -127,7 +153,8 @@
     "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
     "recharts": "https://aistudiocdn.com/recharts@^3.5.1",
     "jspdf": "https://aistudiocdn.com/jspdf@^2.5.2",
-    "jspdf-autotable": "https://aistudiocdn.com/jspdf-autotable@^3.8.4"
+    "jspdf-autotable": "https://aistudiocdn.com/jspdf-autotable@^3.8.4",
+    "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1"
   }
 }
 </script>

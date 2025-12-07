@@ -165,11 +165,21 @@ export interface ShadowPlayer {
   name: string;
   currentClub: string;
   position: Position;
+  foot?: Foot;
+  height?: string;
   age: string;
   marketValue: string;
   contractEnds: string;
   priority: 'A' | 'B' | 'C'; // A = Top Target, B = Alternative, C = Perspective
   notes: string;
+  assignedSlot?: number; // Index of the slot in the formation (0-10)
+}
+
+export interface ShadowTeam {
+  id: string;
+  name: string;
+  formation?: string; // e.g. '4-4-2'
+  players: ShadowPlayer[];
 }
 
 export interface CalendarEvent {
