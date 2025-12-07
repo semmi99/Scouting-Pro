@@ -145,8 +145,6 @@ export interface PlayerScoutingData {
     goals: number;
     assists: number;
   };
-  // Note: attributes are now stored in separate state in component for easier handling, 
-  // or can be passed here. For the types file, we keep the interface for structure.
   textAttributes: {
     strengths: string;
     weaknesses: string;
@@ -158,4 +156,38 @@ export interface PlayerScoutingData {
     offensive: string;
     summary: string;
   };
+}
+
+// --- New Types for Shadow Team & Calendar ---
+
+export interface ShadowPlayer {
+  id: string;
+  name: string;
+  currentClub: string;
+  position: Position;
+  age: string;
+  marketValue: string;
+  contractEnds: string;
+  priority: 'A' | 'B' | 'C'; // A = Top Target, B = Alternative, C = Perspective
+  notes: string;
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  date: string; // YYYY-MM-DD
+  time: string;
+  location: string;
+  type: 'Match' | 'Training' | 'Meeting';
+}
+
+export interface MatchSearchResult {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  date: string;
+  time: string;
+  location: string;
+  league: string;
+  distance: string;
 }

@@ -219,7 +219,7 @@ const TeamScouting: React.FC = () => {
               reader.onloadend = () => {
                   setReportImages(prev => [...prev, reader.result as string]);
               };
-              reader.readAsDataURL(file);
+              reader.readAsDataURL(file as Blob);
           });
       }
   };
@@ -307,7 +307,7 @@ const TeamScouting: React.FC = () => {
 
     // Tables Side by Side
     // Left Table (Home)
-    autoTable(doc as any, {
+    autoTable(doc, {
         startY: y,
         margin: { left: 14 },
         tableWidth: 88,
@@ -319,7 +319,7 @@ const TeamScouting: React.FC = () => {
     });
 
     // Right Table (Away)
-    autoTable(doc as any, {
+    autoTable(doc, {
         startY: y,
         margin: { left: 109 },
         tableWidth: 88,
@@ -371,7 +371,7 @@ const TeamScouting: React.FC = () => {
     doc.setFont("helvetica", "bold");
     doc.text("SPIELER ANALYSE / INFOS", 16, y + 5.5);
 
-    autoTable(doc as any, {
+    autoTable(doc, {
         startY: y + 10,
         head: [['Nr', 'Name', 'Infos zu den Spielern']],
         body: playerInfos.map(p => [p.number, p.name, p.info]),

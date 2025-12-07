@@ -138,6 +138,7 @@ const PlayerScouting: React.FC = () => {
       const doc = new jsPDF();
       const primaryColor = [251, 191, 36]; // Yellow-400
       const secondaryColor = [30, 41, 59]; // Slate-800
+      const lightGrey = [240, 240, 240];
 
       // -- Header --
       doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
@@ -245,38 +246,49 @@ const PlayerScouting: React.FC = () => {
       doc.text(doc.splitTextToSize(playerData.strengths, 85), 14, y);
       doc.text(doc.splitTextToSize(playerData.weaknesses, 85), 110, y);
 
-      y += 30;
+      y += 35; // More spacing
 
       // -- Draw Charts Function --
       const drawChartSection = (title: string, dataObj: any) => {
-          if (y > 220) { doc.addPage(); y = 20; }
+          const keys = Object.keys(dataObj);
+          const requiredHeight = (keys.length * 8) + 25; // Header + bars
+
+          // Check for page break
+          if (y + requiredHeight > 280) { 
+              doc.addPage(); 
+              y = 20; 
+          }
           
+          // Section Header
+          doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+          doc.rect(14, y, 182, 8, 'F');
           doc.setFont("helvetica", "bold");
           doc.setFontSize(11);
-          doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-          doc.text(title.toUpperCase(), 14, y);
-          y += 6;
+          doc.setTextColor(255, 255, 255);
+          doc.text(title.toUpperCase(), 16, y + 5.5);
+          y += 12;
 
           // Draw Bars
-          const keys = Object.keys(dataObj);
-          const barHeight = 4;
-          const labelWidth = 60;
-          const maxBarWidth = 100;
+          const barHeight = 5;
+          const labelWidth = 55;
+          const maxBarWidth = 110;
           
-          doc.setFontSize(8);
+          doc.setFontSize(9);
           doc.setFont("helvetica", "normal");
+          doc.setTextColor(0,0,0);
 
           keys.forEach(key => {
+              // Extra check per line not strictly necessary due to block check above, but good safety
               if (y > 280) { doc.addPage(); y = 20; }
+              
               const val = dataObj[key];
               const label = getLabel(key);
 
               // Label
-              doc.setTextColor(0,0,0);
-              doc.text(label, 14, y + 3);
+              doc.text(label, 14, y + 4);
 
-              // Bar Background
-              doc.setFillColor(240, 240, 240);
+              // Bar Background Container
+              doc.setFillColor(lightGrey[0], lightGrey[1], lightGrey[2]);
               doc.rect(14 + labelWidth, y, maxBarWidth, barHeight, 'F');
 
               // Bar Value
@@ -286,12 +298,14 @@ const PlayerScouting: React.FC = () => {
               else doc.setFillColor(239, 68, 68); // Red
               
               const currentBarWidth = (val / 10) * maxBarWidth;
-              doc.rect(14 + labelWidth, y, currentBarWidth, barHeight, 'F');
+              if (currentBarWidth > 0) {
+                 doc.rect(14 + labelWidth, y, currentBarWidth, barHeight, 'F');
+              }
 
               // Value Text
-              doc.text(val.toString(), 14 + labelWidth + maxBarWidth + 2, y + 3);
+              doc.text(val.toString(), 14 + labelWidth + maxBarWidth + 3, y + 4);
 
-              y += 7;
+              y += 8; // Spacing per bar
           });
           y += 5; // Spacing between charts
       };
@@ -304,7 +318,16 @@ const PlayerScouting: React.FC = () => {
       drawChartSection("Taktik", attributes.tactics);
 
       // -- Text Phases --
-      if (y > 230) { doc.addPage(); y = 20; }
+      // Force Page break for text phases to keep them clean
+      doc.addPage(); 
+      y = 20;
+
+      doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.rect(0, 0, 210, 15, 'F');
+      doc.setFontSize(14);
+      doc.setTextColor(255, 255, 255);
+      doc.text("TAKTISCHES PROFIL", 105, 10, { align: 'center' });
+      y = 30;
       
       const phases = [
           { title: "IM BALLBESITZ", text: playerData.tacticalPossession },
@@ -316,15 +339,19 @@ const PlayerScouting: React.FC = () => {
 
       phases.forEach(phase => {
           if (y > 250) { doc.addPage(); y = 20; }
+          
           doc.setFont("helvetica", "bold");
+          doc.setFontSize(11);
+          doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+          doc.text(phase.title, 14, y);
+          y += 6;
+          
+          doc.setFont("helvetica", "normal");
           doc.setFontSize(10);
           doc.setTextColor(0,0,0);
-          doc.text(phase.title, 14, y);
-          y += 5;
-          doc.setFont("helvetica", "normal");
           const lines = doc.splitTextToSize(phase.text, 182);
           doc.text(lines, 14, y);
-          y += (lines.length * 5) + 8;
+          y += (lines.length * 5) + 10;
       });
 
       doc.save(`player-report-${playerData.name}.pdf`);
