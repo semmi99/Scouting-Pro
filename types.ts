@@ -28,6 +28,14 @@ export interface PlayerInfoItem {
   info: string;
 }
 
+export interface TickerEvent {
+  id: string;
+  minute: string;
+  type: 'Goal' | 'YellowCard' | 'RedCard' | 'Sub' | 'Chance' | 'Info' | 'Shot' | 'Corner' | 'Freekick';
+  text: string;
+  team: 'Home' | 'Away';
+}
+
 export interface TeamScoutingData {
   competition: string;
   location: string;
